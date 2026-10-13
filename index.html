@@ -1,34 +1,1061 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bloom QR Clone</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- CDN Dependencies -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Bloom QR — Infinite 3D Flower Bouquet QR Generator</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Core 3D and Animation Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  
+  <!-- Font Awesome for clean UI icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Google Fonts: Cormorant Garamond & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Cormorant Garamond"', 'serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            cream: {
+              50: '#FDFBF7',
+              100: '#F9F5EC',
+              200: '#F2EBDC',
+              300: '#E7DCB9',
+            },
+            terracotta: '#D47355',
+            bark: '#2B211C',
+            petalBurgundy: '#44141E',
+            petalRose: '#8C3243',
+            petalSakura: '#5B1F34',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #F8F4EE;
+      color: #2B211C;
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Ambient noise and luxury aesthetic gradient */
+    .bg-aesthetic {
+      background: radial-gradient(circle at 50% 30%, #FFFDF9 0%, #F5EDE2 55%, #EADDC9 100%);
+    }
+
+    /* Frosted glassmorphism panels */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 20px 40px -15px rgba(58, 38, 25, 0.08), 0 0 1px 1px rgba(255, 255, 255, 0.6);
+    }
+
+    .glass-card-dark {
+      background: rgba(43, 33, 28, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Smooth custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D8C7B5;
+      border-radius: 4px;
+    }
+
+    /* Subtle pulse animation for guide border */
+    @keyframes subtlePulse {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+    .scanner-reticle {
+      animation: subtlePulse 3s infinite ease-in-out;
+    }
+
+    /* Floating button hover effect */
+    .btn-spring {
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    }
+    .btn-spring:hover {
+      transform: translateY(-2px);
+    }
+    .btn-spring:active {
+      transform: translateY(1px) scale(0.98);
+    }
+  </style>
 </head>
-<body>
-  <div id="canvas-container"></div>
+<body class="relative w-screen h-screen font-sans bg-aesthetic select-none">
 
-  <!-- UI Overlay -->
-  <div class="overlay">
-    <header class="header">
-      <span class="badge">🌸 Bloom QR</span>
-    </header>
+  <!-- 3D Three.js WebGL Canvas Container -->
+  <div id="canvas-container" class="absolute inset-0 z-0 cursor-grab active:cursor-grabbing"></div>
 
-    <div class="prompt-box">
-      <p id="status-text">Tap anywhere to bloom into a scannable QR code</p>
-      <button id="toggle-btn" class="bloom-btn">Bloom Bouquet</button>
+  <!-- Quiet zone white backplate indicator when in QR state for camera scan guarantee -->
+  <div id="qr-scannable-backdrop" class="absolute inset-0 pointer-events-none flex items-center justify-center transition-opacity duration-700 opacity-0 z-[1]">
+    <div class="w-[320px] h-[320px] md:w-[410px] md:h-[410px] bg-white/95 rounded-3xl shadow-2xl border-4 border-[#2B211C]/10 flex flex-col items-center justify-between p-4 scanner-reticle">
+      <div class="w-full flex justify-between items-center text-[10px] font-mono tracking-widest text-stone-400 uppercase">
+        <span>[ SCANNER QUIET ZONE ]</span>
+        <span id="qr-dimension-tag">25x25</span>
+      </div>
+      <div class="text-stone-300 text-xs tracking-wider flex items-center gap-1.5 font-medium">
+        <i class="fa-solid fa-camera"></i> Scan using Camera App
+      </div>
     </div>
-
-    <footer class="footer">
-      <p>Target URL: <span id="target-url-label">Loading...</span></p>
-    </footer>
   </div>
 
-  <script src="app.js"></script>
+  <!-- Header / Top Bar -->
+  <header class="absolute top-0 left-0 right-0 z-20 p-4 md:p-6 flex justify-between items-center pointer-events-none">
+    <div class="pointer-events-auto flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl glass-panel flex items-center justify-center text-rose-700 shadow-sm border border-white/60">
+        <i class="fa-solid fa-spa text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-serif text-2xl md:text-3xl font-bold tracking-tight text-bark leading-none">Bloom QR</h1>
+        <p class="text-[11px] md:text-xs text-stone-500 font-medium tracking-wide">3D Botanical QR Sculptor</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons Top Right -->
+    <div class="pointer-events-auto flex items-center gap-2">
+      <button id="btn-open-creator" class="glass-panel px-3.5 py-2 md:px-4 md:py-2.5 rounded-full text-xs md:text-sm font-semibold text-bark flex items-center gap-2 btn-spring hover:bg-white transition-all shadow-sm">
+        <i class="fa-solid fa-wand-magic-sparkles text-rose-600"></i>
+        <span>Create New</span>
+      </button>
+      <button id="btn-share-link" class="glass-panel w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-bark btn-spring hover:bg-white text-xs md:text-sm transition-all shadow-sm" title="Share Bouquet Link">
+        <i class="fa-solid fa-share-nodes"></i>
+      </button>
+      <button id="btn-capture-qr" class="glass-panel w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-bark btn-spring hover:bg-white text-xs md:text-sm transition-all shadow-sm" title="Download Screenshot">
+        <i class="fa-solid fa-download"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Center Bottom Primary Morph Action Island -->
+  <div class="absolute bottom-6 left-0 right-0 z-20 flex flex-col items-center justify-center pointer-events-none px-4">
+    
+    <!-- Active Status Hint Pill -->
+    <div id="status-bubble" class="pointer-events-auto mb-3 glass-panel px-4 py-1.5 rounded-full text-xs font-medium text-stone-700 flex items-center gap-2 shadow-sm transition-all duration-300">
+      <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+      <span id="status-description">Vase Bouquet • Tap button or screen to bloom into QR</span>
+    </div>
+
+    <!-- Main Interaction Bar -->
+    <div class="pointer-events-auto glass-panel p-2 rounded-full flex items-center gap-2 shadow-xl border border-white/80">
+      <button id="btn-toggle-bloom" class="bg-bark hover:bg-black text-white px-6 py-3 rounded-full text-sm font-semibold tracking-wide flex items-center gap-2.5 btn-spring transition-all shadow-md">
+        <i id="btn-bloom-icon" class="fa-solid fa-qrcode text-rose-300 text-base"></i>
+        <span id="btn-bloom-text">Bloom into QR</span>
+      </button>
+
+      <button id="btn-reorient" class="w-11 h-11 rounded-full hover:bg-white/80 flex items-center justify-center text-stone-700 transition-all text-sm" title="Reset View & Spin">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+
+      <button id="btn-quick-theme" class="w-11 h-11 rounded-full hover:bg-white/80 flex items-center justify-center text-stone-700 transition-all text-sm" title="Cycle Botanical Palette">
+        <i class="fa-solid fa-palette"></i>
+      </button>
+    </div>
+
+    <!-- Embedded URL info display -->
+    <div class="pointer-events-auto mt-3 max-w-[90vw] md:max-w-md text-center">
+      <p class="text-[11px] text-stone-500 truncate bg-white/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/50">
+        Linked: <span id="current-url-display" class="font-mono text-stone-800 font-medium">https://instagram.com/armaan.deep31</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Generator Modal / Creator Sheet (Slide over or modal overlay) -->
+  <div id="creator-modal" class="fixed inset-0 z-40 bg-bark/30 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300 opacity-0 pointer-events-none">
+    <div id="creator-modal-card" class="w-full max-w-lg glass-panel bg-white/90 rounded-3xl p-6 md:p-8 shadow-2xl border border-white flex flex-col gap-5 transform scale-95 transition-all duration-300">
+      
+      <!-- Modal Header -->
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full mb-1">
+            <i class="fa-solid fa-leaf"></i> Instant Bouquet Generator
+          </div>
+          <h2 class="font-serif text-2xl md:text-3xl font-bold text-bark">Create a Bloom QR</h2>
+          <p class="text-xs text-stone-500 mt-0.5">Encode any URL, Instagram profile, WiFi or greeting card.</p>
+        </div>
+        <button id="btn-close-modal" class="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center transition-all">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- URL Input Field -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold tracking-wider uppercase text-stone-600">Target Destination / URL</label>
+        <div class="relative flex items-center">
+          <span class="absolute left-3.5 text-stone-400 text-sm">
+            <i class="fa-solid fa-link"></i>
+          </span>
+          <input 
+            type="text" 
+            id="input-target-url" 
+            placeholder="https://instagram.com/yourname or your text..." 
+            value="https://instagram.com/armaan.deep31"
+            class="w-full pl-10 pr-24 py-3 bg-stone-50 border border-stone-200 focus:border-bark focus:ring-1 focus:ring-bark rounded-2xl text-sm text-stone-800 outline-none transition-all"
+          />
+          <button id="btn-paste-clip" class="absolute right-2 px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 rounded-xl text-[11px] font-medium text-stone-700 transition-all">
+            Paste
+          </button>
+        </div>
+        <p class="text-[11px] text-stone-400">Works with Instagram, TikTok, YouTube, WhatsApp, personal websites, or plain text.</p>
+      </div>
+
+      <!-- Color Theme Selection -->
+      <div class="flex flex-col gap-2">
+        <label class="text-xs font-semibold tracking-wider uppercase text-stone-600">Botanical Flora Palette</label>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5" id="theme-selector-container">
+          <!-- Dynamically filled with themes -->
+        </div>
+      </div>
+
+      <!-- Flower Petal Density / Correction -->
+      <div class="flex flex-col gap-1.5">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-semibold uppercase text-stone-600">Error Correction Level</span>
+          <span id="error-correction-desc" class="text-stone-500 font-mono">Medium (Best Balance)</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" data-ec="M" class="ec-btn active py-2 px-3 rounded-xl border border-stone-800 bg-bark text-white text-xs font-medium text-center transition-all">
+            Standard Flora ('M')
+          </button>
+          <button type="button" data-ec="Q" class="ec-btn py-2 px-3 rounded-xl border border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100 text-xs font-medium text-center transition-all">
+            Dense Botanical ('Q')
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="pt-2 flex gap-3">
+        <button id="btn-generate-bloom" class="flex-1 py-3.5 bg-bark hover:bg-black text-white font-semibold text-sm rounded-2xl shadow-lg transition-all btn-spring flex items-center justify-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles text-rose-300"></i>
+          <span>Grow Flower Bouquet QR</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Feedback Banner -->
+  <div id="toast-banner" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-4">
+    <div class="glass-panel bg-white/95 px-5 py-2.5 rounded-full shadow-xl border border-stone-200 flex items-center gap-2.5 text-xs font-semibold text-bark">
+      <i id="toast-icon" class="fa-solid fa-check text-rose-600"></i>
+      <span id="toast-msg">Link copied to clipboard!</span>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. GLOBAL STATE & FLORAL PALETTE DEFINITIONS
+       ========================================================================= */
+    const FLORAL_PALETTES = [
+      {
+        id: 'midnight-rose',
+        name: 'Dark Burgundy',
+        subtitle: 'Maximum Scan Contrast',
+        colors: ['#2B1117', '#4A1523', '#320E15'],
+        stemColor: '#2B3A26',
+        centerColor: '#9C3D54',
+        vaseColor: '#F7EFE5',
+        badge: 'Top Scan'
+      },
+      {
+        id: 'sakura-blush',
+        name: 'Sakura Blush',
+        subtitle: 'Deep Japanese Cherry',
+        colors: ['#3A0E23', '#5E1D3B', '#48132D'],
+        stemColor: '#2C3E2D',
+        centerColor: '#D97594',
+        vaseColor: '#FFFFFF',
+        badge: 'Popular'
+      },
+      {
+        id: 'lavender-twilight',
+        name: 'Lavender Dusk',
+        subtitle: 'Rich Violet Bouquet',
+        colors: ['#1E1233', '#331D56', '#261442'],
+        stemColor: '#253528',
+        centerColor: '#8862C4',
+        vaseColor: '#ECE6F0',
+        badge: null
+      },
+      {
+        id: 'golden-dahlia',
+        name: 'Golden Dahlia',
+        subtitle: 'Amber & Espresso',
+        colors: ['#301B05', '#573108', '#3F2206'],
+        stemColor: '#2D3823',
+        centerColor: '#C48322',
+        vaseColor: '#FAF4EB',
+        badge: null
+      },
+      {
+        id: 'forest-emerald',
+        name: 'Botanical Fern',
+        subtitle: 'Deep Forest Moss',
+        colors: ['#0E2818', '#163B25', '#10301D'],
+        stemColor: '#172B1E',
+        centerColor: '#4CA771',
+        vaseColor: '#F2EFEB',
+        badge: null
+      },
+      {
+        id: 'noir-minimal',
+        name: 'Noir Velvet',
+        subtitle: 'High Contrast Ebony',
+        colors: ['#121110', '#211F1D', '#1A1816'],
+        stemColor: '#1E231C',
+        centerColor: '#5C544E',
+        vaseColor: '#F6F6F6',
+        badge: 'Guaranteed'
+      }
+    ];
+
+    let currentThemeIndex = 0;
+    let currentECLevel = 'M';
+    let currentURL = 'https://instagram.com/armaan.deep31';
+    let isBloomed = false; // false = Bouquet inside Vase, true = Flat QR matrix
+    let isAnimating = false;
+
+    /* =========================================================================
+       2. THREE.JS SCENE, CAMERA & LIGHTING INITIALIZATION
+       ========================================================================= */
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    
+    // Perspective Camera tuned for portrait & landscape
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0.5, 46);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    container.appendChild(renderer.domElement);
+
+    // Warm aesthetic ambient & directional studio lights
+    const ambientLight = new THREE.AmbientLight(0xFFF9F2, 1.4);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xFFFFFF, 1.8);
+    keyLight.position.set(18, 35, 30);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 1024;
+    keyLight.shadow.mapSize.height = 1024;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xFCEEDB, 0.8);
+    fillLight.position.set(-20, -10, 20);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xFFFFFF, 0.5);
+    rimLight.position.set(0, 25, -25);
+    scene.add(rimLight);
+
+    // Scene Parent Pivot for smooth camera rotation and drag gestures
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
+
+    // Vase Group (moves down and fades away when bloomed)
+    const vaseGroup = new THREE.Group();
+    worldGroup.add(vaseGroup);
+
+    /* =========================================================================
+       3. 3D CERAMIC VASE CONSTRUCTION
+       ========================================================================= */
+    function buildCeramicVase() {
+      // Clear previous vase children
+      while(vaseGroup.children.length > 0){ 
+        const obj = vaseGroup.children[0];
+        vaseGroup.remove(obj);
+      }
+
+      const activeTheme = FLORAL_PALETTES[currentThemeIndex];
+
+      // Organic curved vase using LatheGeometry
+      const points = [];
+      points.push(new THREE.Vector2(2.2, -6.5));
+      points.push(new THREE.Vector2(3.6, -5.5));
+      points.push(new THREE.Vector2(4.3, -3.2));
+      points.push(new THREE.Vector2(3.8, -0.5));
+      points.push(new THREE.Vector2(2.4, 2.0));
+      points.push(new THREE.Vector2(2.1, 3.2));
+      points.push(new THREE.Vector2(2.6, 3.8));
+
+      const latheGeo = new THREE.LatheGeometry(points, 48);
+      const vaseMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(activeTheme.vaseColor),
+        roughness: 0.28,
+        metalness: 0.08,
+        bumpScale: 0.02
+      });
+
+      const vaseMesh = new THREE.Mesh(latheGeo, vaseMat);
+      vaseMesh.castShadow = true;
+      vaseMesh.receiveShadow = true;
+      vaseGroup.add(vaseMesh);
+
+      // Gold Neck Accent Ring
+      const ringGeo = new THREE.TorusGeometry(2.35, 0.08, 16, 48);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: 0xD4AF37,
+        metalness: 0.85,
+        roughness: 0.25
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = Math.PI / 2;
+      ringMesh.position.y = 2.4;
+      vaseGroup.add(ringMesh);
+
+      // Soft ground contact shadow plane
+      const shadowPlaneGeo = new THREE.PlaneGeometry(30, 30);
+      const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.15 });
+      const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+      shadowPlane.rotation.x = -Math.PI / 2;
+      shadowPlane.position.y = -6.5;
+      shadowPlane.receiveShadow = true;
+      vaseGroup.add(shadowPlane);
+
+      vaseGroup.position.set(0, -5.0, 0);
+    }
+
+    /* =========================================================================
+       4. PROCEDURAL FLOWER PETAL GEOMETRY & INSTANCING
+       ========================================================================= */
+    function createFlowerGeometry() {
+      // Curved floral bud / layered 5-petal flower mesh
+      const petalShape = new THREE.Shape();
+      const petalLength = 1.0;
+      const petalWidth = 0.55;
+
+      // Heart / organic leaf bezier curve
+      petalShape.moveTo(0, 0);
+      petalShape.bezierCurveTo(petalWidth, petalLength * 0.3, petalWidth * 0.9, petalLength * 0.8, 0, petalLength);
+      petalShape.bezierCurveTo(-petalWidth * 0.9, petalLength * 0.8, -petalWidth, petalLength * 0.3, 0, 0);
+
+      const extrudeSettings = {
+        depth: 0.12,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.06,
+        bevelThickness: 0.06
+      };
+
+      const geo = new THREE.ExtrudeGeometry(petalShape, extrudeSettings);
+      geo.center();
+      return geo;
+    }
+
+    const singleFlowerGeo = createFlowerGeometry();
+    let instancedFlowersMesh = null;
+    let flowerCount = 0;
+    let qrModulesData = [];
+    let bouquetData = [];
+    let morphAnimation = { progress: 0 };
+
+    /* =========================================================================
+       5. QR GENERATION & SPATIAL MATRIX MAPPING
+       ========================================================================= */
+    function computeQRAndPositions(text, ecLevel) {
+      // Generate using qrcode-generator CDN
+      const qr = qrcode(0, ecLevel);
+      qr.addData(text);
+      qr.make();
+
+      const count = qr.getModuleCount();
+      document.getElementById('qr-dimension-tag').textContent = `${count}×${count}`;
+      
+      const darkCells = [];
+      for (let r = 0; r < count; r++) {
+        for (let c = 0; c < count; c++) {
+          if (qr.isDark(r, c)) {
+            darkCells.push({ r, c });
+          }
+        }
+      }
+
+      flowerCount = darkCells.length;
+
+      // Remove existing mesh
+      if (instancedFlowersMesh) {
+        worldGroup.remove(instancedFlowersMesh);
+        instancedFlowersMesh.geometry.dispose();
+        instancedFlowersMesh.material.dispose();
+      }
+
+      // High-performance InstancedMesh
+      const flowerMaterial = new THREE.MeshStandardMaterial({
+        roughness: 0.32,
+        metalness: 0.08,
+      });
+
+      instancedFlowersMesh = new THREE.InstancedMesh(singleFlowerGeo, flowerMaterial, flowerCount);
+      instancedFlowersMesh.castShadow = true;
+      instancedFlowersMesh.receiveShadow = true;
+      worldGroup.add(instancedFlowersMesh);
+
+      // Pre-compute Bouquet Coordinates and Flat QR Coordinates
+      const currentTheme = FLORAL_PALETTES[currentThemeIndex];
+      const themeColors = currentTheme.colors.map(hex => new THREE.Color(hex));
+
+      bouquetData = [];
+      qrModulesData = [];
+
+      // World scale calculation: QR will fit cleanly into 24x24 world unit square
+      const worldQRWidth = 23.5;
+      const step = worldQRWidth / count;
+      const flowerScaleInQR = (step * 0.95);
+
+      for (let i = 0; i < flowerCount; i++) {
+        const cell = darkCells[i];
+
+        // 1. Assign Petal Shade
+        const color = themeColors[i % themeColors.length];
+        instancedFlowersMesh.setColorAt(i, color);
+
+        // 2. Bouquet Coordinates: Spherical hemisphere bloom over the vase
+        // Fibonacci sphere distribution capped to upper dome
+        const phi = Math.acos(1 - (1.75 * i) / flowerCount); 
+        const theta = Math.sqrt(flowerCount * Math.PI) * phi;
+        const radius = 4.8 + (Math.sin(i * 1.5) * 1.6) + (Math.random() * 0.5);
+
+        const bPos = new THREE.Vector3(
+          radius * Math.sin(phi) * Math.cos(theta),
+          radius * Math.cos(phi) + 1.2, // Sitting atop vase rim
+          radius * Math.sin(phi) * Math.sin(theta)
+        );
+
+        // Petals naturally face outwards along normal
+        const bRot = new THREE.Euler(
+          phi + (Math.random() - 0.5) * 0.4,
+          theta + (Math.random() - 0.5) * 0.4,
+          (Math.random() - 0.5) * 1.2
+        );
+
+        const bScale = 0.9 + Math.random() * 0.3;
+
+        bouquetData.push({ pos: bPos, rot: bRot, scale: bScale });
+
+        // 3. QR Matrix Coordinates (perfect flat grid facing front Z)
+        const qx = (cell.c - count / 2 + 0.5) * step;
+        const qy = -(cell.r - count / 2 + 0.5) * step; // Invert Y for QR matrix
+        const qz = 0;
+
+        const qPos = new THREE.Vector3(qx, qy, qz);
+        // Face directly camera forward
+        const qRot = new THREE.Euler(0, 0, (cell.r % 2 === 0 ? 0 : Math.PI / 4)); 
+
+        qrModulesData.push({ pos: qPos, rot: qRot, scale: flowerScaleInQR });
+      }
+
+      instancedFlowersMesh.instanceColor.needsUpdate = true;
+      updateInstanceTransforms(morphAnimation.progress);
+    }
+
+    /* =========================================================================
+       6. SMOOTH 3D TRANSFORMATION & INTERPOLATION
+       ========================================================================= */
+    const tempDummy = new THREE.Object3D();
+
+    function updateInstanceTransforms(t) {
+      if (!instancedFlowersMesh) return;
+
+      for (let i = 0; i < flowerCount; i++) {
+        const b = bouquetData[i];
+        const q = qrModulesData[i];
+
+        // Interpolate position with subtle arch
+        const curPos = new THREE.Vector3().lerpVectors(b.pos, q.pos, t);
+        // Add dynamic arc during transition
+        const arc = Math.sin(t * Math.PI) * (1.5 + (i % 5) * 0.2);
+        curPos.z += arc;
+
+        // Interpolate rotation
+        const rx = THREE.MathUtils.lerp(b.rot.x, q.rot.x, t);
+        const ry = THREE.MathUtils.lerp(b.rot.y, q.rot.y, t);
+        const rz = THREE.MathUtils.lerp(b.rot.z, q.rot.z, t);
+
+        // Scale
+        const scaleVal = THREE.MathUtils.lerp(b.scale, q.scale, t);
+
+        tempDummy.position.copy(curPos);
+        tempDummy.rotation.set(rx, ry, rz);
+        tempDummy.scale.set(scaleVal, scaleVal, scaleVal);
+        tempDummy.updateMatrix();
+
+        instancedFlowersMesh.setMatrixAt(i, tempDummy.matrix);
+      }
+
+      instancedFlowersMesh.instanceMatrix.needsUpdate = true;
+
+      // Move vase downwards and fade out during blooming
+      vaseGroup.position.y = THREE.MathUtils.lerp(-5.0, -30.0, t);
+      vaseGroup.scale.setScalar(1 - t * 0.75);
+
+      // Toggle backdrop quiet zone opacity for phone scanning
+      const qrBackdrop = document.getElementById('qr-scannable-backdrop');
+      if (qrBackdrop) {
+        qrBackdrop.style.opacity = t > 0.85 ? '1' : '0';
+      }
+    }
+
+    /* =========================================================================
+       7. MORPH TOGGLE INTERACTION (GSAP ANIMATION)
+       ========================================================================= */
+    function toggleBloomMode() {
+      if (isAnimating) return;
+      isAnimating = true;
+      isBloomed = !isBloomed;
+
+      const targetVal = isBloomed ? 1 : 0;
+      const btnText = document.getElementById('btn-bloom-text');
+      const btnIcon = document.getElementById('btn-bloom-icon');
+      const statusText = document.getElementById('status-description');
+
+      // Animate world rotation back to straight-on if blooming to QR
+      if (isBloomed) {
+        gsap.to(worldGroup.rotation, {
+          x: 0,
+          y: 0,
+          z: 0,
+          duration: 1.4,
+          ease: 'power3.out'
+        });
+        gsap.to(camera.position, {
+          x: 0,
+          y: 0,
+          z: 42,
+          duration: 1.4,
+          ease: 'power3.out'
+        });
+      } else {
+        // Natural slight tilt for bouquet aesthetic
+        gsap.to(worldGroup.rotation, {
+          x: 0.15,
+          y: 0,
+          z: 0,
+          duration: 1.6,
+          ease: 'power3.out'
+        });
+        gsap.to(camera.position, {
+          x: 0,
+          y: 0.5,
+          z: 46,
+          duration: 1.6,
+          ease: 'power3.out'
+        });
+      }
+
+      gsap.to(morphAnimation, {
+        progress: targetVal,
+        duration: 1.8,
+        ease: 'power4.inOut',
+        onUpdate: () => updateInstanceTransforms(morphAnimation.progress),
+        onComplete: () => {
+          isAnimating = false;
+          if (isBloomed) {
+            btnText.textContent = 'Pack into Bouquet';
+            btnIcon.className = 'fa-solid fa-spa text-rose-300';
+            statusText.textContent = 'Scannable QR Mode • Aim your camera phone at the center';
+            showToast('Flowers aligned! Scan with your phone camera.');
+          } else {
+            btnText.textContent = 'Bloom into QR';
+            btnIcon.className = 'fa-solid fa-qrcode text-rose-300';
+            statusText.textContent = 'Vase Bouquet • Tap button or screen to bloom into QR';
+          }
+        }
+      });
+    }
+
+    /* =========================================================================
+       8. THEME & PALETTE SELECTION
+       ========================================================================= */
+    function renderThemeSelector() {
+      const container = document.getElementById('theme-selector-container');
+      container.innerHTML = '';
+
+      FLORAL_PALETTES.forEach((palette, idx) => {
+        const isSelected = idx === currentThemeIndex;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `p-3 rounded-2xl border text-left flex flex-col gap-1.5 transition-all ${
+          isSelected 
+            ? 'border-bark bg-stone-100 shadow-sm ring-1 ring-bark' 
+            : 'border-stone-200 hover:border-stone-400 bg-white/60'
+        }`;
+
+        btn.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              ${palette.colors.map(c => `<span class="w-3.5 h-3.5 rounded-full shadow-inner" style="background-color: ${c}"></span>`).join('')}
+            </div>
+            ${palette.badge ? `<span class="text-[9px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">${palette.badge}</span>` : ''}
+          </div>
+          <span class="text-xs font-semibold text-bark truncate">${palette.name}</span>
+          <span class="text-[10px] text-stone-400 truncate">${palette.subtitle}</span>
+        `;
+
+        btn.addEventListener('click', () => {
+          currentThemeIndex = idx;
+          renderThemeSelector();
+          applyCurrentTheme();
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    function applyCurrentTheme() {
+      buildCeramicVase();
+      computeQRAndPositions(currentURL, currentECLevel);
+    }
+
+    function cycleNextTheme() {
+      currentThemeIndex = (currentThemeIndex + 1) % FLORAL_PALETTES.length;
+      renderThemeSelector();
+      applyCurrentTheme();
+      const theme = FLORAL_PALETTES[currentThemeIndex];
+      showToast(`Palette: ${theme.name}`);
+    }
+       /* =========================================================================
+       9. REGENERATION, CUSTOM URL PARSER & SHAREABLE LINKS
+       ========================================================================= */
+    function setAndGenerateNewQR(newUrl, newEC) {
+      if (!newUrl || newUrl.trim() === '') {
+        showToast('Please enter a valid link or text');
+        return;
+      }
+
+      currentURL = newUrl.trim();
+      currentECLevel = newEC || currentECLevel;
+
+      // Update UI displays
+      document.getElementById('current-url-display').textContent = currentURL;
+      document.getElementById('input-target-url').value = currentURL;
+
+      // Update URL query parameters seamlessly without reload
+      const pageUrl = new URL(window.location);
+      pageUrl.searchParams.set('u', encodeURIComponent(currentURL));
+      pageUrl.searchParams.set('theme', currentThemeIndex);
+      window.history.replaceState({}, '', pageUrl);
+
+      // Re-create
+      computeQRAndPositions(currentURL, currentECLevel);
+
+      // If bloomed, reset to bouquet for the grand bloom reveal
+      if (isBloomed) {
+        toggleBloomMode();
+      }
+
+      showToast('🌸 New flower bouquet sculpted!');
+    }
+
+    // Read initial URL from query parameters if present
+    function parseInitialQueryParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryU = urlParams.get('u');
+      const queryTheme = urlParams.get('theme');
+
+      if (queryTheme && !isNaN(queryTheme) && FLORAL_PALETTES[parseInt(queryTheme)]) {
+        currentThemeIndex = parseInt(queryTheme);
+      }
+
+      if (queryU) {
+        try {
+          currentURL = decodeURIComponent(queryU);
+        } catch(e) {
+          currentURL = queryU;
+        }
+      }
+
+      document.getElementById('current-url-display').textContent = currentURL;
+      document.getElementById('input-target-url').value = currentURL;
+    }
+
+    /* =========================================================================
+       10. MODAL CONTROLS & EVENT LISTENERS
+       ========================================================================= */
+    const creatorModal = document.getElementById('creator-modal');
+    const creatorModalCard = document.getElementById('creator-modal-card');
+
+    function openModal() {
+      creatorModal.classList.remove('opacity-0', 'pointer-events-none');
+      creatorModalCard.classList.remove('scale-95');
+      creatorModalCard.classList.add('scale-100');
+    }
+
+    function closeModal() {
+      creatorModal.classList.add('opacity-0', 'pointer-events-none');
+      creatorModalCard.classList.remove('scale-100');
+      creatorModalCard.classList.add('scale-95');
+    }
+
+    // Modal Triggers
+    document.getElementById('btn-open-creator').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openModal();
+    });
+
+    document.getElementById('btn-close-modal').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeModal();
+    });
+
+    creatorModal.addEventListener('click', (e) => {
+      if (e.target === creatorModal) closeModal();
+    });
+
+    // Error Correction toggles inside modal
+    document.querySelectorAll('.ec-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.ec-btn').forEach(b => {
+          b.classList.remove('active', 'bg-bark', 'text-white');
+          b.classList.add('bg-stone-50', 'text-stone-700');
+        });
+        btn.classList.add('active', 'bg-bark', 'text-white');
+        btn.classList.remove('bg-stone-50', 'text-stone-700');
+        
+        currentECLevel = btn.dataset.ec;
+        const desc = document.getElementById('error-correction-desc');
+        desc.textContent = currentECLevel === 'M' ? 'Medium (Best Balance)' : 'Dense Botanical (More Petals)';
+      });
+    });
+
+    // Generate Button inside Modal
+    document.getElementById('btn-generate-bloom').addEventListener('click', () => {
+      const inputVal = document.getElementById('input-target-url').value;
+      closeModal();
+      setAndGenerateNewQR(inputVal, currentECLevel);
+    });
+
+    // Clipboard Paste Button
+    document.getElementById('btn-paste-clip').addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const text = await navigator.clipboard.readText();
+          document.getElementById('input-target-url').value = text;
+          showToast('Pasted from clipboard');
+        }
+      } catch (err) {
+        showToast('Use manual Paste shortcut');
+      }
+    });
+
+    // Primary Bloom Toggle Button
+    document.getElementById('btn-toggle-bloom').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleBloomMode();
+    });
+
+    // Quick Theme Switch Button
+    document.getElementById('btn-quick-theme').addEventListener('click', (e) => {
+      e.stopPropagation();
+      cycleNextTheme();
+    });
+
+    // Reset Orientation Button
+    document.getElementById('btn-reorient').addEventListener('click', (e) => {
+      e.stopPropagation();
+      gsap.to(worldGroup.rotation, { x: isBloomed ? 0 : 0.15, y: 0, z: 0, duration: 0.8, ease: 'power2.out' });
+      showToast('Camera centered');
+    });
+
+    /* =========================================================================
+       11. SHAREABLE LINK & SCREENSHOT EXPORT
+       ========================================================================= */
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toast-banner');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.textContent = msg;
+      toastIcon.className = isSuccess ? 'fa-solid fa-check text-rose-600' : 'fa-solid fa-circle-exclamation text-amber-600';
+
+      toast.classList.remove('opacity-0', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2800);
+    }
+
+    // Share link button
+    document.getElementById('btn-share-link').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const shareUrl = window.location.href;
+
+      // Exec command copy support for iframe sandboxes
+      const dummyInput = document.createElement('input');
+      dummyInput.value = shareUrl;
+      document.body.appendChild(dummyInput);
+      dummyInput.select();
+      try {
+        document.execCommand('copy');
+        showToast('Shareable bouquet link copied to clipboard!');
+      } catch (err) {
+        showToast('Could not copy link automatically');
+      }
+      document.body.removeChild(dummyInput);
+    });
+
+    // Capture / Download Screenshot button
+    document.getElementById('btn-capture-qr').addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Render clean frame
+      renderer.render(scene, camera);
+      const dataURL = renderer.domElement.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = `Bloom-QR-${Date.now()}.png`;
+      a.click();
+      showToast('Bouquet image downloaded!');
+    });
+
+    /* =========================================================================
+       12. INTERACTIVE TOUCH & DRAG ORBIT CONTROLS
+       ========================================================================= */
+    let isDragging = false;
+    let prevMouseX = 0;
+    let prevMouseY = 0;
+    let hasMovedSignificantly = false;
+
+    window.addEventListener('mousedown', (e) => {
+      // Ignore if clicking UI elements
+      if (e.target.closest('button') || e.target.closest('#creator-modal') || e.target.closest('input')) return;
+      isDragging = true;
+      hasMovedSignificantly = false;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      const deltaY = e.clientY - prevMouseY;
+
+      if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+        hasMovedSignificantly = true;
+      }
+
+      worldGroup.rotation.y += deltaX * 0.007;
+      if (!isBloomed) {
+        worldGroup.rotation.x = Math.max(-0.5, Math.min(0.6, worldGroup.rotation.x + deltaY * 0.005));
+      }
+
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      // If user tapped cleanly without dragging on canvas, trigger bloom morph
+      if (!hasMovedSignificantly && !e.target.closest('button') && !e.target.closest('#creator-modal') && !e.target.closest('input')) {
+        toggleBloomMode();
+      }
+    });
+
+    // Touch Support for Mobile Devices
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        if (e.target.closest('button') || e.target.closest('#creator-modal') || e.target.closest('input')) return;
+        isDragging = true;
+        hasMovedSignificantly = false;
+        prevMouseX = e.touches[0].clientX;
+        prevMouseY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const deltaX = e.touches[0].clientX - prevMouseX;
+      const deltaY = e.touches[0].clientY - prevMouseY;
+
+      if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+        hasMovedSignificantly = true;
+      }
+
+      worldGroup.rotation.y += deltaX * 0.008;
+      if (!isBloomed) {
+        worldGroup.rotation.x = Math.max(-0.5, Math.min(0.6, worldGroup.rotation.x + deltaY * 0.006));
+      }
+
+      prevMouseX = e.touches[0].clientX;
+      prevMouseY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      if (!hasMovedSignificantly && !e.target.closest('button') && !e.target.closest('#creator-modal') && !e.target.closest('input')) {
+        toggleBloomMode();
+      }
+    });
+
+    // Responsive window resizing
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    /* =========================================================================
+       13. MAIN ANIMATION LOOP & BOOTSTRAP
+       ========================================================================= */
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsedTime = clock.getElapsedTime();
+
+      // Idle soothing rotation and gentle floral breathing when assembled as bouquet
+      if (!isDragging && morphAnimation.progress < 0.05) {
+        worldGroup.rotation.y += 0.004;
+        // Subtle vertical breathing oscillation
+        vaseGroup.position.y = -5.0 + Math.sin(elapsedTime * 1.5) * 0.12;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Initialize once window loads
+    window.onload = function() {
+      parseInitialQueryParams();
+      renderThemeSelector();
+      buildCeramicVase();
+      computeQRAndPositions(currentURL, currentECLevel);
+      animate();
+    };
+  </script>
 </body>
 </html>
