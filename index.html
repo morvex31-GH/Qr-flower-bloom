@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bloom QR Clone</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- CDN Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- UI Overlay -->
+  <div class="overlay">
+    <header class="header">
+      <span class="badge">🌸 Bloom QR</span>
+    </header>
+
+    <div class="prompt-box">
+      <p id="status-text">Tap anywhere to bloom into a scannable QR code</p>
+      <button id="toggle-btn" class="bloom-btn">Bloom Bouquet</button>
+    </div>
+
+    <footer class="footer">
+      <p>Target URL: <span id="target-url-label">Loading...</span></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
