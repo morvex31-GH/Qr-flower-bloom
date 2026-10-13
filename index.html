@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bloom QR — 3D Flower Bouquet QR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;800&display=swap">
+<style>
+:root{--page:#fff8f6;--card:#fff;--text:#2b2025;--mut:#7b6b72;--line:rgba(0,0,0,.12);--acc:#d6182f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#17121a;--card:#221a24;--text:#f6eef2;--mut:#b5a5ad;--line:rgba(255,255,255,.16)}}
+:root[data-theme="dark"]{--page:#17121a;--card:#221a24;--text:#f6eef2;--mut:#b5a5ad;--line:rgba(255,255,255,.16)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+h1,h2{font-family:Fraunces,Georgia,serif;margin:0}
+h1{font-size:2.2rem;font-weight:800;color:var(--acc);text-align:center;line-height:1.1}
+.sub{text-align:center;color:var(--mut);margin:6px 0 18px}
+h2{font-size:1.15rem;margin:26px 0 10px}
+.stage{position:relative;width:min(100%,440px);aspect-ratio:1;margin:0 auto;border-radius:28px;background:radial-gradient(circle at 50% 40%,#3d2547,#140d18);box-shadow:0 14px 40px rgba(0,0,0,.28);overflow:hidden;user-select:none;-webkit-user-select:none}
+.stage>*{position:absolute;inset:0;width:100%;height:100%;transition:opacity .6s,transform .6s}
+#bq canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv{opacity:0;transform:scale(.8) rotate(-8deg);pointer-events:none}
+.stage.qr #cv{opacity:1;transform:none}
+.stage.qr #bq{opacity:0;transform:scale(1.15);pointer-events:none}
+.hint{text-align:center;color:var(--mut);font-size:.85rem;margin:10px 0 0}
+.btn{display:block;width:100%;padding:14px 18px;border:0;border-radius:999px;background:var(--acc);color:#fff;font:600 1rem inherit;font-family:inherit;cursor:pointer;margin-top:14px}
+.btn.alt{background:transparent;color:var(--acc);border:2px solid var(--acc)}
+.row{display:flex;gap:8px}
+input[type=text],select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}
+.pastebtn{flex:none;padding:0 16px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;cursor:pointer}
+.msg{min-height:1.4em;font-size:.88rem;color:var(--acc);margin:6px 2px 0}
+.pals{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.pal{border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:8px 4px;cursor:pointer;font:inherit;font-size:.72rem}
+.pal i{display:block;width:100%;aspect-ratio:1;border-radius:50%;margin-bottom:4px}
+.pal.on{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 25%,transparent)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:.85rem;color:var(--mut);display:block;margin-bottom:4px}
+.chk{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:.95rem}
+.note{color:var(--mut);font-size:.85rem;text-align:center;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bloom QR</h1>
+  <p class="sub">A 3D bouquet of roses, lilies and marigolds that blooms into your QR code.</p>
+
+  <div class="stage" id="stage">
+    <div id="bq"></div>
+    <canvas id="cv" aria-label="QR code"></canvas>
+  </div>
+  <p class="hint">Drag to spin. Touch and hold to make it glow.</p>
+  <button class="btn" id="bloom">Bloom into QR</button>
+  <button class="btn alt" id="dl">Download PNG</button>
+
+  <h2>Your link or text</h2>
+  <div class="row">
+    <input id="u" type="text" inputmode="url" autocomplete="off" value="https://www.snapchat.com/add/itz_armaanhere?share_id=EQwSR8wm6jg&locale=en-IN" aria-label="Link or text to encode">
+    <button class="pastebtn" id="paste" type="button">Paste</button>
+  </div>
+  <div class="msg" id="msg"></div>
+
+  <h2>Flower colours</h2>
+  <div class="pals" id="pals"></div>
+
+  <h2>QR style</h2>
+  <div class="two">
+    <div><label for="sty">Module shape</label>
+      <select id="sty"><option value="dots">Dots</option><option value="petals">Petals</option><option value="blocks">Blocks</option></select></div>
+    <div><label for="ec">Error correction</label>
+      <select id="ec"><option value="M">Medium</option><option value="Q" selected>Dense (Q)</option><option value="H">Max + flower center</option></select></div>
+  </div>
+  <label class="chk"><input type="checkbox" id="hap" checked> Haptic feedback (Android phones; iPhones don't support web vibration)</label>
+  <p class="note">The QR holds only your link, so it works offline. Test-scan it before printing.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+const P=[
+{n:'Classic',rose:'#d6182f',lily:'#fff1ea',mari:'#ff9a1f',daisy:'#ffffff',lav:'#8b6bd6',wrap:'#e8c9a0',acc:'#d6182f',tint:'#fff3ee',ink:['#7f1d2d','#9f1239','#6b1230'],c:['#d6182f','#ff9a1f']},
+{n:'Blush',rose:'#f58aa8',lily:'#ffe3ec',mari:'#ffc15c',daisy:'#ffffff',lav:'#b58bd8',wrap:'#fbe3ea',acc:'#e0457b',tint:'#fff0f5',ink:['#831843','#9d174d','#701a50'],c:['#f58aa8','#ffc15c']},
+{n:'Sunset',rose:'#ff6b3d',lily:'#ffd166',mari:'#ffb000',daisy:'#fff1c2',lav:'#ff8fab',wrap:'#f5d7b0',acc:'#e8590c',tint:'#fff6e5',ink:['#7c2d12','#9a3412','#78350f'],c:['#ff6b3d','#ffb000']},
+{n:'Royal',rose:'#7b2cbf',lily:'#e0aaff',mari:'#ffd60a',daisy:'#f8f0ff',lav:'#5b6cd6',wrap:'#cdb4db',acc:'#8e3fd1',tint:'#f6f0ff',ink:['#3b1d78','#5b21b6','#4c1d95'],c:['#7b2cbf','#ffd60a']},
+{n:'Sky',rose:'#ffffff',lily:'#ffffff',mari:'#ffcf33',daisy:'#ffffff',lav:'#7fb8ff',wrap:'#cfe8ff',acc:'#2a8bd6',tint:'#eef8ff',ink:['#0c4a6e','#075985','#164e63'],c:['#7fb8ff','#ffcf33']}
+];
+const $=s=>document.querySelector(s);
+const U=$('#u'),cv=$('#cv'),cx=cv.getContext('2d'),st=$('#stage'),bq=$('#bq');
+cv.width=cv.height=900;
+let pi=0,qr=null,fin=[],dat=[],raf=0;
+const hap=p=>{if($('#hap').checked&&navigator.vibrate)try{navigator.vibrate(p)}catch(e){}};
+
+/* ---------- 3D scene ---------- */
+const R=new THREE.WebGLRenderer({antialias:true,alpha:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));
+bq.appendChild(R.domElement);
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(38,1,.1,50);
+C.position.set(0,.5,10.5);C.lookAt(0,0,0);
+S.add(new THREE.AmbientLight(0xffffff,.75));
+const D=new THREE.DirectionalLight(0xffffff,.9);D.position.set(3,6,5);S.add(D);
+const PL=new THREE.PointLight(0xffaa88,.4,14);PL.position.set(0,.8,2.8);S.add(PL);
+const hc=document.createElement('canvas');hc.width=hc.height=128;
+const hg=hc.getContext('2d').createRadialGradient(64,64,0,64,64,64);
+hg.addColorStop(0,'rgba(255,255,255,1)');hg.addColorStop(1,'rgba(255,255,255,0)');
+hc.getContext('2d').fillStyle=hg;hc.getContext('2d').fillRect(0,0,128,128);
+const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(hc),blending:THREE.AdditiveBlending,transparent:true,opacity:.12,depthWrite:false}));
+halo.scale.set(10,10,1);halo.position.set(0,.7,-1.5);S.add(halo);
+function resize(){const w=st.clientWidth;R.setSize(w,w,false);C.aspect=1;C.updateProjectionMatrix();}
+addEventListener('resize',resize);
+
+const mats=[];let fl=[],BQ=null,t0=0;
+const mk=(c,r=.6)=>{const m=new THREE.MeshStandardMaterial({color:c,roughness:r,emissive:c,side:THREE.DoubleSide});m.emissiveIntensity=0;mats.push(m);return m;};
+const col=(h,l)=>new THREE.Color(h).offsetHSL(0,0,l);
+function pet(w,h,bend,cup,sh){
+  const g=new THREE.PlaneGeometry(w,h,4,6);g.translate(0,h/2,0);
+  const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i),y=p.getY(i),t=y/h;
+    const f=sh?Math.sin(Math.PI*Math.pow(t,.55)):Math.sin(Math.PI*Math.min(1,t*.85+.12));
+    p.setX(i,x*f);p.setZ(i,bend*h*t*t+cup*x*x/w*(.3+t));
+  }
+  g.computeVertexNormals();return g;
+}
+function ring(G,n,o){
+  const geo=pet(o.w,o.h,o.bend||0,o.cup||0,o.sh),m=mk(o.col),j=o.jit||0;
+  for(let i=0;i<n;i++){
+    const pv=new THREE.Group();pv.rotation.y=(i+(o.off||0))*2*Math.PI/n+(Math.random()-.5)*j;
+    const me=new THREE.Mesh(geo,m);me.position.set(0,o.y||0,o.r||0);me.rotation.x=o.tilt+(Math.random()-.5)*j*.5;
+    pv.add(me);G.add(pv);
+  }
+}
+const FL={
+  rose(G,c){[[5,.05,.5,-.35,.1],[6,.3,.7,-.1,.06],[8,.62,.9,.15,.03],[10,.95,1.1,.3,0]].forEach(([n,tilt,s,bend,y],k)=>ring(G,n,{w:.75*s,h:.8*s,tilt,bend,cup:.5,r:.03+k*.03,y,col:col(c,(k-1.5)*.04),jit:.15,off:k*.5}));},
+  lily(G,c){
+    ring(G,3,{w:.7,h:1.5,tilt:.95,bend:.5,cup:.3,sh:1,col:col(c,-.03)});
+    ring(G,3,{w:.65,h:1.4,tilt:1.05,bend:.55,cup:.3,sh:1,col:c,off:.5});
+    const sm=mk('#9a4a1a'),am=mk('#c2410c');
+    for(let i=0;i<6;i++){
+      const pv=new THREE.Group(),sg=new THREE.Group();pv.rotation.y=i*Math.PI/3;sg.rotation.x=.25+Math.random()*.2;
+      const cy=new THREE.CylinderGeometry(.012,.012,1.1,5);cy.translate(0,.55,0);
+      const an=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),am);an.scale.y=2.2;an.position.y=1.1;
+      sg.add(new THREE.Mesh(cy,sm),an);pv.add(sg);G.add(pv);
+    }
+  },
+  mari(G,c){[16,14,12,10,8,6,4].forEach((n,k)=>ring(G,n,{w:.34,h:.6-k*.03,tilt:1.35-k*.2,bend:.12,cup:.8,r:.02,y:k*.015,col:col(c,(k-3)*.025+(k%2)*.03),jit:.3,off:k*.37}));},
+  daisy(G,c){
+    ring(G,18,{w:.2,h:.85,tilt:1.35,cup:.2,r:.15,col:c,jit:.1});
+    ring(G,16,{w:.2,h:.8,tilt:1.25,r:.15,y:.02,col:col(c,-.04),off:.5,jit:.1});
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.24,16,10),mk('#f6c21c'));m.scale.y=.55;m.position.y=.04;G.add(m);
+  },
+  lav(G,c){for(let k=0;k<12;k++){const m=new THREE.Mesh(new THREE.SphereGeometry(.09-k*.003,8,6),mk(col(c,(k%3)*.04)));m.scale.set(1,1.4,1);const a=k*2.4;m.position.set(Math.cos(a)*.1,k*.11-.2,Math.sin(a)*.1);G.add(m);}}
+};
+const SZ={rose:.9,lily:.75,mari:.95,daisy:.9,lav:1.1};
+function build3D(){
+  if(BQ){S.remove(BQ);BQ.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.dispose)o.material.dispose();});}
+  mats.length=0;fl=[];BQ=new THREE.Group();t0=performance.now();
+  const pal=P[pi],B=new THREE.Vector3(0,-2.7,0),up=new THREE.Vector3(0,1,0);
+  const T=['rose','lily','rose','mari','daisy','rose','lily','mari','rose','daisy','mari','lav','lav'];
+  const gm=new THREE.MeshStandardMaterial({color:'#2f7d46',roughness:.7,side:THREE.DoubleSide});
+  const dirOf=(th,ph)=>new THREE.Vector3(Math.sin(th)*Math.cos(ph),Math.cos(th),Math.sin(th)*Math.sin(ph));
+  T.forEach((tp,i)=>{
+    const ph=i*2.4,dir=dirOf(1.05*Math.sqrt((i+.5)/T.length),ph);
+    const head=new THREE.Vector3(0,-.2,0).addScaledVector(dir,2.3);
+    const G=new THREE.Group();FL[tp](G,pal[tp]);
+    G.scale.setScalar(0);G.position.copy(head);G.quaternion.setFromUnitVectors(up,dir);G.rotateY(Math.random()*6);
+    G.userData={s:SZ[tp],born:i*.12+.1};BQ.add(G);fl.push(G);
+    const mid=B.clone().lerp(head,.55).add(new THREE.Vector3(Math.cos(ph)*.15,0,Math.sin(ph)*.15));
+    BQ.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([B,mid,head.clone().addScaledVector(dir,-.1)]),12,.035,6),gm));
+  });
+  for(let i=0;i<9;i++){
+    const d=dirOf(1.3+.12*(i%3),i*2.4+.6),l=new THREE.Mesh(new THREE.SphereGeometry(1,10,6),gm);
+    l.scale.set(.28,.9,.07);l.position.set(0,-.4,0).addScaledVector(d,1.9);l.quaternion.setFromUnitVectors(up,d);BQ.add(l);
+  }
+  const w=new THREE.Mesh(new THREE.ConeGeometry(1.6,2.6,28,1,true),new THREE.MeshStandardMaterial({color:pal.wrap,side:THREE.DoubleSide,roughness:.9}));
+  w.rotation.x=Math.PI;w.position.y=-1.4;
+  const rb=new THREE.Mesh(new THREE.TorusGeometry(.52,.07,8,24),new THREE.MeshStandardMaterial({color:pal.acc,roughness:.4}));
+  rb.rotation.x=Math.PI/2;rb.position.y=-1.9;
+  BQ.add(w,rb);S.add(BQ);
+  halo.material.color.set(pal.acc);PL.color.set(pal.rose);
+}
+
+/* ---------- interaction: spin, glow, haptics ---------- */
+let gl=0,gt=0,ry=0,rx=.1,vy=.006,drag=false,lx=0,ly=0,acc=0,hb=0;
+bq.addEventListener('pointerdown',e=>{
+  drag=true;lx=e.clientX;ly=e.clientY;gt=1;hap(15);
+  try{bq.setPointerCapture(e.pointerId)}catch(_){}
+  clearInterval(hb);hb=setInterval(()=>hap([8,50,8]),700);
+});
+bq.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;
+  ry+=dx*.012;rx=Math.max(-.5,Math.min(.6,rx+dy*.006));vy=Math.max(-.08,Math.min(.08,dx*.003));
+  acc+=Math.abs(dx);if(acc>45){acc=0;hap(5);}
+});
+['pointerup','pointercancel'].forEach(ev=>bq.addEventListener(ev,()=>{drag=false;gt=0;clearInterval(hb);}));
+function loop(now){
+  requestAnimationFrame(loop);
+  if(st.classList.contains('qr')||!BQ)return;
+  const t=(now-t0)/1000;
+  gl+=(gt-gl)*.08;
+  if(!drag){ry+=vy;vy+=(.006-vy)*.02;}
+  BQ.rotation.set(rx,ry,Math.sin(t*.8)*.03);
+  fl.forEach(G=>{
+    const u=Math.min(1,Math.max(0,(t-G.userData.born)/1.1)),e=1+2.70158*Math.pow(u-1,3)+1.70158*Math.pow(u-1,2);
+    G.scale.setScalar(G.userData.s*e*(1+gl*.05*Math.sin(t*6)));
+  });
+  mats.forEach(m=>m.emissiveIntensity=gl*.55);
+  halo.material.opacity=.12+.65*gl;PL.intensity=.4+2*gl;
+  R.render(S,C);
+}
+
+/* ---------- QR code ---------- */
+function build(){
+  const t=U.value.trim();
+  if(!t){$('#msg').textContent='Paste a link or some text first.';return false;}
+  try{const q=qrcode(0,$('#ec').value);q.addData(t);q.make();qr=q;$('#msg').textContent='';}
+  catch(e){$('#msg').textContent='Too long for this level. Choose Medium or shorten the link.';return false;}
+  const n=qr.getModuleCount(),m=(n-1)/2,H=$('#ec').value==='H'?n*.11:0;
+  fin=[];dat=[];
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    if(!qr.isDark(r,c))continue;
+    if((r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7)){fin.push({r,c});continue;}
+    const d=Math.hypot(r-m,c-m);if(H&&d<H*1.1)continue;dat.push({r,c,d});
+  }
+  dat.sort((a,b)=>a.d-b.d);return true;
+}
+function draw(p){
+  if(!qr)return;
+  const th=P[pi],n=qr.getModuleCount(),W=cv.width,cell=W/(n+8),o=4*cell,sty=$('#sty').value;
+  cx.clearRect(0,0,W,W);cx.fillStyle=th.tint;cx.fillRect(0,0,W,W);
+  cx.fillStyle=th.ink[0];
+  fin.forEach(({r,c})=>cx.fillRect(o+c*cell-.3,o+r*cell-.3,cell+.6,cell+.6));
+  const k=Math.floor(dat.length*p);
+  for(let i=0;i<k;i++){
+    const {r,c}=dat[i],x=o+c*cell,y=o+r*cell;cx.fillStyle=th.ink[(r*7+c*3)%3];
+    if(sty==='dots'){cx.beginPath();cx.arc(x+cell/2,y+cell/2,cell*.48,0,7);cx.fill();}
+    else if(sty==='petals'){cx.beginPath();const h=cell*.5;cx.roundRect(x,y,cell,cell,(r+c)%2?[h,0,h,0]:[0,h,0,h]);cx.fill();}
+    else cx.fillRect(x+cell*.04,y+cell*.04,cell*.92,cell*.92);
+  }
+  if($('#ec').value==='H'&&p>=1){
+    const m=W/2,r=cell*n*.11;
+    cx.fillStyle=th.tint;cx.beginPath();cx.arc(m,m,r*1.1,0,7);cx.fill();
+    for(let i=0;i<8;i++){cx.save();cx.translate(m,m);cx.rotate(i*Math.PI/4);cx.fillStyle=th.c[i%2];cx.beginPath();cx.ellipse(0,-r*.55,r*.22,r*.42,0,0,7);cx.fill();cx.restore();}
+    cx.fillStyle=th.ink[0];cx.beginPath();cx.arc(m,m,r*.2,0,7);cx.fill();
+  }
+}
+function bloomAnim(){
+  cancelAnimationFrame(raf);const s=performance.now();
+  (function f(t){const p=Math.min(1,(t-s)/1400);draw(p);if(p<1)raf=requestAnimationFrame(f);})(s);
+}
+function setQR(on){
+  st.classList.toggle('qr',on);
+  $('#bloom').textContent=on?'Back to bouquet':'Bloom into QR';
+  if(on){hap([20,40,20]);if(build())bloomAnim();}else build3D();
+}
+function apply(){
+  const th=P[pi];
+  document.documentElement.style.setProperty('--acc',th.acc);
+  document.querySelectorAll('.pal').forEach((b,i)=>b.classList.toggle('on',i===pi));
+  build3D();if(build())draw(1);
+}
+
+/* ---------- UI wiring ---------- */
+$('#pals').innerHTML=P.map((p,i)=>`<button class="pal" data-i="${i}"><i style="background:linear-gradient(135deg,${p.rose},${p.mari},${p.lily})"></i>${p.n}</button>`).join('');
+$('#pals').addEventListener('click',e=>{const b=e.target.closest('.pal');if(b){pi=+b.dataset.i;hap(10);apply();}});
+$('#bloom').onclick=()=>setQR(!st.classList.contains('qr'));
+let tm;
+U.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(()=>{if(build())draw(1);},250);});
+['sty','ec'].forEach(id=>$('#'+id).addEventListener('change',()=>{if(build())draw(1);}));
+$('#paste').onclick=async()=>{try{U.value=await navigator.clipboard.readText();if(build())draw(1);}catch(e){$('#msg').textContent='Clipboard blocked. Paste into the box manually.';}};
+$('#dl').onclick=()=>{
+  if(!build())return;cancelAnimationFrame(raf);draw(1);
+  const a=document.createElement('a');a.href=cv.toDataURL('image/png');a.download='bloom-qr.png';
+  document.body.appendChild(a);a.click();a.remove();
+};
+resize();apply();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
